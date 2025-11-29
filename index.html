@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG por Turnos - Aventura del Destino</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .game-container {
+            background-color: #2d2d2d;
+            border: 2px solid #555;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 600px;
+            text-align: center;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background-color: #404040;
+            color: #e0e0e0;
+        }
+        button {
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        button:disabled {
+            background-color: #333;
+            cursor: not-allowed;
+        }
+        .btn-save {
+            background-color: #2e8b27 !important;
+            color: white;
+            font-weight: bold;
+        }
+        .btn-save:hover {
+            background-color: #3cb371 !important;
+        }
+        .btn-load {
+            background-color: #1e90ff;
+            color: white;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #3d3d3d;
+            border-radius: 5px;
+        }
+        .log {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #1a1a1a;
+            border: 1px solid #555;
+            padding: 10px;
+            text-align: left;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .hidden {
+            display: none;
+        }
+        .hp-bar {
+            width: 100px;
+            height: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .hp-fill {
+            height: 100%;
+            background-color: #ff4444;
+            transition: width 0.3s;
+        }
+        #inventory-div {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #3d3d3d;
+            border-radius: 5px;
+            text-align: left;
+        }
+        #inv-items p {
+            margin: 5px 0;
+        }
+        #inventory-setup div {
+            margin: 5px 0;
+            text-align: left;
+        }
+        #inventory-setup button {
+            padding: 5px;
+            font-size: 14px;
+            margin: 0 2px;
+        }
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2d2d2d;
+            border: 2px solid #555;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .modal input {
+            width: 60px;
+        }
+        #store-items {
+            max-height: 250px;
+            overflow-y: auto;
+            text-align: left;
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        #v-inv {
+            text-align: left;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        #store-items p {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>RPG por Turnos: Aventura del Destino</h1>
+        
+        <!-- Pantalla de inicio -->
+        <div id="start-screen">
+            <p>¡Bienvenido, valiente aventurero!</p>
+            <p>Dificultad (1 = Fácil, 10 = Épico):<br>
+            <input type="number" id="difficulty" min="1" max="10" value="5"></p>
+            <p>HP inicial de tu personaje (1-100):<br>
+            <input type="number" id="player-hp-input" min="1" max="100" value="100"></p>
+            <p>Dinero inicial (oro):<br>
+            <input type="number" id="player-gold-input" min="0" value="100"></p>
+            <div id="inventory-setup">
+                <h3>Inventario Inicial (todas en 0)</h3>
+                <div>Poción HP Pequeña: <span id="qty_pocion_hp_pequena">0</span> <button onclick="changeQty('pocion_hp_pequena', -1)">-</button> <button onclick="changeQty('pocion_hp_pequena', 1)">+</button></div>
+                <div>Poción HP Mediana: <span id="qty_pocion_hp_mediana">0</span> <button onclick="changeQty('pocion_hp_mediana', -1)">-</button> <button onclick="changeQty('pocion_hp_mediana', 1)">+</button></div>
+                <div>Poción HP Grande: <span id="qty_pocion_hp_grande">0</span> <button onclick="changeQty('pocion_hp_grande', -1)">-</button> <button onclick="changeQty('pocion_hp_grande', 1)">+</button></div>
+                <div>Poción HP Full: <span id="qty_pocion_hp_full">0</span> <button onclick="changeQty('pocion_hp_full', -1)">-</button> <button onclick="changeQty('pocion_hp_full', 1)">+</button></div>
+                <div>Poción MP: <span id="qty_pocion_mp">0</span> <button onclick="changeQty('pocion_mp', -1)">-</button> <button onclick="changeQty('pocion_mp', 1)">+</button></div>
+                <div>Bonus Ataque: <span id="qty_bonus_ataque">0</span> <button onclick="changeQty('bonus_ataque', -1)">-</button> <button onclick="changeQty('bonus_ataque', 1)">+</button></div>
+                <div>Bonus Defensa: <span id="qty_bonus_defensa">0</span> <button onclick="changeQty('bonus_defensa', -1)">-</button> <button onclick="changeQty('bonus_defensa', 1)">+</button></div>
+            </div>
+            <button onclick="startGame()">Comenzar Aventura</button><br><br>
+            <button id="load-game-btn" class="btn-load hidden" onclick="loadGame()">Cargar Progreso Anterior</button>
+        </div>
+        
+        <!-- Pantalla de juego -->
+        <div id="game-screen" class="hidden">
+            <div class="stats">
+                <div>
+                    <strong>Tú:</strong><br>
+                    HP: <span id="player-hp">100</span>/100
+                    <div class="hp-bar"><div class="hp-fill" id="player-hp-bar" style="width:100%"></div></div>
+                </div>
+                <div>
+                    <strong>Enemigo:</strong><br>
+                    HP: <span id="enemy-hp">???</span>/???
+                    <div class="hp-bar"><div class="hp-fill" id="enemy-hp-bar" style="width:100%"></div></div>
+                </div>
+            </div>
+            
+            <div id="enemy-name"></div>
+            <p>Oro: <span id="player-gold">0</span></p>
+            
+            <div class="log" id="log"></div>
+            
+            <div id="actions">
+                <button onclick="playerAction('attack')">Ataque Básico (5 DMG)</button>
+                <button onclick="playerAction('strong')">Ataque Fuerte (15 DMG, 10 MP)</button>
+                <button onclick="playerAction('defend')">Defender (+50% Mitigación)</button>
+                <button onclick="playerAction('luck')">Invocar Suerte (Usa % Suerte)</button>
+                <button onclick="openInventory()">Inventario</button>
+            </div>
+            
+            <p>MP: <span id="player-mp">50</span>/50</p>
+            
+            <div id="inventory-div" class="hidden">
+                <h3>Inventario</h3>
+                <div id="inv-items"></div>
+                <button onclick="closeInventory()">Cerrar</button>
+            </div>
+        </div>
+        
+        <!-- Modal de Victoria -->
+        <div id="victory-modal" class="hidden modal">
+            <h3>¡Victoria!</h3>
+            <div id="victory-stats">
+                <p>HP: <span id="v-hp"></span>/<span id="v-maxhp"></span></p>
+                <p>MP: <span id="v-mp"></span>/<span id="v-maxmp"></span></p>
+                <p>Oro: <span id="v-gold"></span></p>
+                <p>Inventario:</p>
+                <div id="v-inv"></div>
+            </div>
+            <p>Nueva dificultad (1-10): <input type="number" id="next-diff" min="1" max="10"></p>
+            <button onclick="proceedBattle()">Siguiente Batalla</button>
+            <button onclick="openStore()">Ir a la Tienda</button>
+            <br><br>
+            <button class="btn-save" onclick="saveGame()">Guardar Progreso</button>
+        </div>
+        
+        <!-- Modal de Tienda -->
+        <div id="store-modal" class="hidden modal">
+            <h3>Tienda</h3>
+            <div id="store-items"></div>
+            <p>Oro actual: <span id="s-gold"></span></p>
+            <button onclick="leaveStore()">Salir de la Tienda</button>
+        </div>
+        
+        <div id="end-screen" class="hidden">
+            <h2 id="end-message"></h2>
+            <button onclick="restartGame()">Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <script>
+        // === Sistema de Guardado y Carga ===
+        function saveGame() {
+            const saveData = {
+                maxHp: gameState.player.maxHp,
+                gold: gameState.gold,
+                inventory: gameState.inventory,
+                difficulty: gameState.difficulty
+            };
+            localStorage.setItem('rpgAventuraDestino_save', JSON.stringify(saveData));
+            alert('¡Progreso guardado correctamente!');
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('rpgAventuraDestino_save');
+            if (!saved) {
+                alert('No hay partida guardada.');
+                return;
+            }
+
+            const data = JSON.parse(saved);
+
+            // Aplicar valores guardados a la pantalla de inicio
+            document.getElementById('player-hp-input').value = data.maxHp || 100;
+            document.getElementById('player-gold-input').value = data.gold || 0;
+            document.getElementById('difficulty').value = data.difficulty || 5;
+
+            // Limpiar inventario inicial y cargar el guardado
+            const items = ['pocion_hp_pequena', 'pocion_hp_mediana', 'pocion_hp_grande', 'pocion_hp_full', 'pocion_mp', 'bonus_ataque', 'bonus_defensa'];
+            items.forEach(item => {
+                const qty = data.inventory[item] || 0;
+                document.getElementById('qty_' + item).textContent = qty;
+            });
+
+            alert('¡Progreso cargado! Ahora haz clic en "Comenzar Aventura"');
+        }
+
+        // Mostrar botón de cargar si hay partida guardada
+        window.addEventListener('load', () => {
+            if (localStorage.getItem('rpgAventuraDestino_save')) {
+                document.getElementById('load-game-btn').classList.remove('hidden');
+            }
+        });
+
+        function changeQty(item, delta) {
+            const qtyEl = document.getElementById('qty_' + item);
+            let qty = parseInt(qtyEl.textContent) + delta;
+            qty = Math.max(0, qty);
+            qtyEl.textContent = qty;
+        }
+
+        let gameState = {
+            difficulty: 1,
+            luckChance: 0,
+            gold: 0,
+            player: { hp: 100, maxHp: 100, mp: 50, maxMp: 50, defense: 1, dodge: 0 },
+            enemy: { name: '', hp: 0, maxHp: 0, attack: 0, defense: 1 },
+            inventory: {},
+            currentTurn: 'player',
+            log: [],
+            defending: false,
+            tempAtk: false,
+            tempDef: false,
+            inventoryUsedThisTurn: false
+        };
+
+        const itemTypes = {
+            pocion_hp_pequena: {name: 'Poción HP Pequeña', effect: '+10 HP'},
+            pocion_hp_mediana: {name: 'Poción HP Mediana', effect: '+30 HP'},
+            pocion_hp_grande: {name: 'Poción HP Grande', effect: '+50 HP'},
+            pocion_hp_full: {name: 'Poción HP Full', effect: 'HP completo'},
+            pocion_mp: {name: 'Poción MP', effect: '+20 MP'},
+            bonus_ataque: {name: 'Bonus Ataque', effect: '+10 DMG próximo ataque'},
+            bonus_defensa: {name: 'Bonus Defensa', effect: 'Mitiga 50% próximo daño enemigo'}
+        };
+
+        const storeItems = {
+            pocion_hp_pequena: {name: 'Poción HP Pequeña', price: 10},
+            pocion_hp_mediana: {name: 'Poción HP Mediana', price: 25},
+            pocion_hp_grande: {name: 'Poción HP Grande', price: 40},
+            pocion_hp_full: {name: 'Poción HP Full', price: 80},
+            pocion_mp: {name: 'Poción MP', price: 15},
+            bonus_ataque: {name: 'Bonus Ataque', price: 20},
+            bonus_defensa: {name: 'Bonus Defensa', price: 20}
+        };
+
+        function addLog(message) {
+            gameState.log.push(new Date().toLocaleTimeString() + ': ' + message);
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = gameState.log.slice(-10).join('<br>');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('player-hp').textContent = gameState.player.hp;
+            document.getElementById('player-hp-bar').style.width = (gameState.player.hp / gameState.player.maxHp * 100) + '%';
+            document.getElementById('player-mp').textContent = gameState.player.mp;
+            document.getElementById('player-gold').textContent = gameState.gold;
+            document.getElementById('enemy-hp').textContent = gameState.enemy.hp;
+            document.getElementById('enemy-hp-bar').style.width = (gameState.enemy.hp / gameState.enemy.maxHp * 100) + '%';
+        }
+
+        function generateEnemy() {
+            const diff = gameState.difficulty;
+            const enemyTypes = [
+                'Goblin Débil', 'Lobo Salvaje', 'Orco Errante', 'Troll de Cueva', 'Dragón Joven',
+                'Espectro Maldito', 'Guardián de Piedra', 'Hidra Venenosa', 'Demonio Infernal', 'Dios Antiguo'
+            ];
+            const typeIndex = Math.min(diff - 1, enemyTypes.length - 1);
+            gameState.enemy.name = enemyTypes[typeIndex];
+            const baseHp = 50 + (diff * 15);
+            gameState.enemy.maxHp = baseHp + Math.floor(Math.random() * 21) - 10;
+            gameState.enemy.hp = gameState.enemy.maxHp;
+            gameState.enemy.attack = 5 + (diff * 3);
+            gameState.enemy.defense = 1 + (diff * 0.2);
+            
+            document.getElementById('enemy-name').textContent = gameState.enemy.name;
+            addLog(`¡Aparece un ${gameState.enemy.name} con ${gameState.enemy.maxHp} HP!`);
+            gameState.tempAtk = false;
+            gameState.tempDef = false;
+        }
+
+        function calculateLuck() {
+            gameState.luckChance = 90 - (gameState.difficulty * 7);
+        }
+
+        function rollLuck() {
+            return Math.random() * 100 < gameState.luckChance;
+        }
+
+        function endPlayerTurn() {
+            gameState.player.mp = Math.min(gameState.player.maxMp, gameState.player.mp + 3);
+            updateStats();
+            if (gameState.enemy.hp > 0) {
+                gameState.currentTurn = 'enemy';
+                setTimeout(enemyTurn, 1000);
+            }
+        }
+
+        function playerAction(action) {
+            if (gameState.currentTurn !== 'player') return;
+            let damage = 0;
+            let message = '';
+            
+            switch (action) {
+                case 'attack':
+                    damage = Math.floor(Math.random() * 10) + 5;
+                    damage = Math.max(1, Math.floor(damage / gameState.enemy.defense));
+                    if (gameState.tempAtk) {
+                        damage += 10;
+                        message += '¡+10 DMG por bonus de ataque! ';
+                        gameState.tempAtk = false;
+                    }
+                    if (rollLuck()) {
+                        damage *= 2;
+                        message += '¡Golpe crítico por suerte! ';
+                    }
+                    gameState.enemy.hp -= damage;
+                    message += `Infliges ${damage} de daño.`;
+                    break;
+                case 'strong':
+                    if (gameState.player.mp < 10) {
+                        addLog('¡No tienes suficiente MP!');
+                        return;
+                    }
+                    gameState.player.mp -= 10;
+                    damage = Math.floor(Math.random() * 20) + 15;
+                    damage = Math.max(1, Math.floor(damage / gameState.enemy.defense));
+                    if (gameState.tempAtk) {
+                        damage += 10;
+                        message += '¡+10 DMG por bonus de ataque! ';
+                        gameState.tempAtk = false;
+                    }
+                    if (rollLuck()) {
+                        damage += 10;
+                        message += '¡Ataque potenciado por suerte! ';
+                    }
+                    gameState.enemy.hp -= damage;
+                    message += `Infliges ${damage} daño fuerte.`;
+                    break;
+                case 'defend':
+                    gameState.defending = true;
+                    message = 'Te preparas para defender (próximo turno +50% mitigación).';
+                    break;
+                case 'luck':
+                    if (rollLuck()) {
+                        const effects = [
+                            () => { gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + 40); return '¡Recuperas 40 HP por milagro!'; },
+                            () => { gameState.player.mp = Math.min(gameState.player.maxMp, gameState.player.mp + 25); return '¡Mana restaurado por el destino!'; },
+                            () => { damage = Math.floor(Math.random() * 25) + 25; gameState.enemy.hp -= damage; return `¡Rayo de suerte: ${damage} daño al enemigo!`; },
+                            () => { gameState.player.dodge = 0.5; return '¡Escudo de suerte: 50% dodge por 1 turno!'; }
+                        ];
+                        const effect = effects[Math.floor(Math.random() * effects.length)]();
+                        message = effect();
+                    } else {
+                        message = 'La suerte no está de tu lado... nada pasa.';
+                    }
+                    break;
+            }
+            
+            if (message) addLog(message);
+            updateStats();
+            checkEnd();
+            if (gameState.enemy.hp > 0) endPlayerTurn();
+        }
+
+        // === Resto de funciones sin cambios (inventario, tienda, etc.) ===
+        function openInventory() {
+            if (gameState.currentTurn !== 'player') return;
+            updateInvDisplay();
+            document.getElementById('inventory-div').classList.remove('hidden');
+        }
+
+        function closeInventory() {
+            document.getElementById('inventory-div').classList.add('hidden');
+        }
+
+        function updateInvDisplay() {
+            const itemsDiv = document.getElementById('inv-items');
+            itemsDiv.innerHTML = '';
+            let hasItems = false;
+            for (let key in itemTypes) {
+                let qty = gameState.inventory[key] || 0;
+                if (qty > 0) {
+                    hasItems = true;
+                    let p = document.createElement('p');
+                    p.innerHTML = `${itemTypes[key].name}: ${qty} <button onclick="useItem('${key}')">Usar (${itemTypes[key].effect})</button>`;
+                    itemsDiv.appendChild(p);
+                }
+            }
+            if (!hasItems) itemsDiv.innerHTML = '<p>Inventario vacío.</p>';
+        }
+
+        function useItem(key) {
+            if (gameState.inventoryUsedThisTurn) {
+                addLog('Ya usaste el inventario este turno. Espera tu próximo turno.');
+                return;
+            }
+            if (gameState.inventory[key] <= 0) return;
+            gameState.inventory[key]--;
+            let logMsg = '';
+            switch (key) {
+                case 'pocion_hp_pequena': gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + 10); logMsg = '¡+10 HP!'; break;
+                case 'pocion_hp_mediana': gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + 30); logMsg = '¡+30 HP!'; break;
+                case 'pocion_hp_grande': gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + 50); logMsg = '¡+50 HP!'; break;
+                case 'pocion_hp_full': gameState.player.hp = gameState.player.maxHp; logMsg = '¡HP restaurado completamente!'; break;
+                case 'pocion_mp': gameState.player.mp = Math.min(gameState.player.maxMp, gameState.player.mp + 20); logMsg = '¡+20 MP!'; break;
+                case 'bonus_ataque': gameState.tempAtk = true; logMsg = '¡Bonus de ataque activado!'; break;
+                case 'bonus_defensa': gameState.tempDef = true; logMsg = '¡Bonus de defensa activado!'; break;
+            }
+            addLog('Usas ' + itemTypes[key].name + '. ' + logMsg);
+            gameState.inventoryUsedThisTurn = true;
+            updateStats();
+            updateInvDisplay();
+            closeInventory();
+        }
+
+        function enemyTurn() {
+            let finalDamage = Math.floor(Math.random() * 10) + gameState.enemy.attack;
+            if (gameState.tempDef) { finalDamage = Math.floor(finalDamage * 0.5); addLog('¡Bonus de defensa mitiga el daño!'); gameState.tempDef = false; }
+            if (gameState.defending) { finalDamage = Math.floor(finalDamage * 0.5); addLog('¡Tu defensa mitiga el daño!'); gameState.defending = false; }
+            if (Math.random() < gameState.player.dodge) {
+                addLog('¡Esquivas el ataque por completo!');
+                gameState.player.dodge = 0;
+            } else {
+                let damage = Math.floor(finalDamage / gameState.player.defense);
+                gameState.player.hp -= damage;
+                addLog(`El ${gameState.enemy.name} te ataca por ${damage} de daño.`);
+            }
+            updateStats();
+            checkEnd();
+            gameState.currentTurn = 'player';
+            gameState.inventoryUsedThisTurn = false;
+        }
+
+        function checkEnd() {
+            if (gameState.player.hp <= 0) {
+                endGame('¡Has sido derrotado! Inténtalo de nuevo.');
+            } else if (gameState.enemy.hp <= 0) {
+                addLog('¡Victoria! El enemigo ha caído.');
+                setTimeout(() => {
+                    const reward = Math.floor(gameState.difficulty * 10 + Math.random() * 30);
+                    gameState.gold += reward;
+                    addLog(`¡Recompensa: ${reward} oro! Total: ${gameState.gold}`);
+                    updateVictoryModal();
+                    document.getElementById('victory-modal').classList.remove('hidden');
+                }, 1500);
+            }
+        }
+
+        function updateVictoryModal() {
+            document.getElementById('v-hp').textContent = gameState.player.hp;
+            document.getElementById('v-maxhp').textContent = gameState.player.maxHp;
+            document.getElementById('v-mp').textContent = gameState.player.mp;
+            document.getElementById('v-maxmp').textContent = gameState.player.maxMp;
+            document.getElementById('v-gold').textContent = gameState.gold;
+            const vInv = document.getElementById('v-inv');
+            vInv.innerHTML = '';
+            let hasItems = false;
+            for (let key in itemTypes) {
+                let qty = gameState.inventory[key] || 0;
+                if (qty > 0) {
+                    hasItems = true;
+                    vInv.innerHTML += `${itemTypes[key].name}: ${qty}<br>`;
+                }
+            }
+            if (!hasItems) vInv.innerHTML = 'Vacío';
+        }
+
+        function proceedBattle() {
+            let newDiff = parseInt(document.getElementById('next-diff').value);
+            if (isNaN(newDiff) || newDiff < 1 || newDiff > 10) { alert('Dificultad debe ser del 1 al 10.'); return; }
+            gameState.difficulty = newDiff;
+            calculateLuck();
+            gameState.player.mp = Math.min(gameState.player.maxMp, gameState.player.mp + 20);
+            addLog(`Dificultad ajustada a ${newDiff} | Suerte: ${gameState.luckChance}%`);
+            document.getElementById('victory-modal').classList.add('hidden');
+            generateEnemy();
+            updateStats();
+        }
+
+        function openStore() {
+            updateStoreDisplay();
+            document.getElementById('store-modal').classList.remove('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+        }
+
+        function leaveStore() {
+            document.getElementById('store-modal').classList.add('hidden');
+            updateVictoryModal();
+            document.getElementById('victory-modal').classList.remove('hidden');
+        }
+
+        function updateStoreDisplay() {
+            const itemsDiv = document.getElementById('store-items');
+            itemsDiv.innerHTML = '';
+            for (let key in storeItems) {
+                let item = storeItems[key];
+                let p = document.createElement('p');
+                p.innerHTML = `${item.name} - ${item.price} oro <button onclick="buyItem('${key}')">Comprar</button>`;
+                itemsDiv.appendChild(p);
+            }
+            document.getElementById('s-gold').textContent = gameState.gold;
+        }
+
+        function buyItem(key) {
+            let price = storeItems[key].price;
+            if (gameState.gold < price) { alert('¡No tienes suficiente oro!'); return; }
+            gameState.gold -= price;
+            gameState.inventory[key] = (gameState.inventory[key] || 0) + 1;
+            addLog(`¡Compraste ${storeItems[key].name}!`);
+            updateStoreDisplay();
+            updateStats();
+            updateVictoryModal();
+        }
+
+        function startGame() {
+            const diffInput = document.getElementById('difficulty');
+            gameState.difficulty = parseInt(diffInput.value) || 5;
+            if (gameState.difficulty < 1 || gameState.difficulty > 10) { alert('Dificultad debe ser del 1 al 10.'); return; }
+            
+            const hpInput = document.getElementById('player-hp-input');
+            let initHp = parseInt(hpInput.value) || 100;
+            initHp = Math.max(1, Math.min(100, initHp));
+            gameState.player.hp = initHp;
+            gameState.player.maxHp = initHp;
+            
+            gameState.gold = parseInt(document.getElementById('player-gold-input').value) || 0;
+            
+            const items = ['pocion_hp_pequena', 'pocion_hp_mediana', 'pocion_hp_grande', 'pocion_hp_full', 'pocion_mp', 'bonus_ataque', 'bonus_defensa'];
+            gameState.inventory = {};
+            items.forEach(item => {
+                gameState.inventory[item] = parseInt(document.getElementById('qty_' + item).textContent) || 0;
+            });
+            
+            calculateLuck();
+            gameState.log = [`Dificultad: ${gameState.difficulty} | Suerte: ${gameState.luckChance}% | HP: ${initHp} | Oro: ${gameState.gold}`];
+            gameState.inventoryUsedThisTurn = false;
+            
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            addLog('¡La aventura comienza!');
+            generateEnemy();
+            updateStats();
+        }
+
+        function endGame(message) {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('store-modal').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+            document.getElementById('end-message').textContent = message;
+        }
+
+        function restartGame() {
+            location.reload();
+        }
+    </script>
+</body>
+</html>
